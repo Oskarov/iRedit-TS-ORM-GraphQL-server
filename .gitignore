@@ -2,3 +2,5 @@ node_modules
 .idea
 config.ts
 config.json
+orm.config.ts
+dist
