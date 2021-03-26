@@ -66,7 +66,7 @@ export class UserResolver {
             }
         }
         const existUser = await ctx.em.findOne(User, {username: options.username});
-        if (existUser){
+        if (existUser) {
             return {
                 errors: [
                     {
@@ -86,9 +86,9 @@ export class UserResolver {
     @Mutation(() => UserResponse)
     async login(
         @Arg('options') options: LoginInput,
-        @Ctx() ctx: MyContext
+        @Ctx() {em, req}: MyContext
     ): Promise<UserResponse> {
-        const user = await ctx.em.findOne(User, {username: options.username});
+        const user = await em.findOne(User, {username: options.username});
         if (!user) {
             return {
                 errors: [{
@@ -107,6 +107,8 @@ export class UserResolver {
                 }]
             }
         }
+
+        req.session.userId = user.id;
 
         return {user};
     }
