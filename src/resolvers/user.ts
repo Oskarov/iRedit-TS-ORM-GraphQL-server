@@ -42,7 +42,7 @@ export class UserResolver {
     @Mutation(() => UserResponse)
     async register(
         @Arg('options') options: RegistrationInput,
-        @Ctx() ctx: MyContext
+        @Ctx() {em, req}: MyContext
     ): Promise<UserResponse> {
         if (options.username.trim().length <= 2) {
             return {
@@ -65,7 +65,7 @@ export class UserResolver {
                 ]
             }
         }
-        const existUser = await ctx.em.findOne(User, {username: options.username});
+        const existUser = await em.findOne(User, {username: options.username});
         if (existUser) {
             return {
                 errors: [
@@ -78,8 +78,11 @@ export class UserResolver {
         }
 
         const hashedPassword = await argon2.hash(options.password);
-        const user = ctx.em.create(User, {username: options.username, password: hashedPassword});
-        await ctx.em.persistAndFlush(user);
+        const user = em.create(User, {username: options.username, password: hashedPassword});
+        await em.persistAndFlush(user);
+
+        req.session.userId = user.id;
+
         return {user};
     }
 
