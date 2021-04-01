@@ -1,7 +1,8 @@
-import {Resolver, Ctx, Mutation, Arg, InputType, Field, ObjectType} from "type-graphql";
+import {Resolver, Ctx, Mutation, Arg, InputType, Field, ObjectType, Query} from "type-graphql";
 import {MyContext} from "../types";
 import {User} from "../entities/User";
-import argon2 from 'argon2';
+import argon2 from "argon2";
+import {EntityManager} from "@mikro-orm/postgresql"
 
 @InputType()
 class RegistrationInput {
@@ -39,6 +40,16 @@ class UserResponse {
 
 @Resolver()
 export class UserResolver {
+    @Query(() => User, { nullable: true })
+    me(@Ctx() {em, req }: MyContext) {
+        // you are not logged in
+        if (!req.session.userId) {
+            return null;
+        }
+
+        return em.findOne(User, {id: req.session.userId});
+    }
+
     @Mutation(() => UserResponse)
     async register(
         @Arg('options') options: RegistrationInput,
@@ -78,8 +89,20 @@ export class UserResolver {
         }
 
         const hashedPassword = await argon2.hash(options.password);
-        const user = em.create(User, {username: options.username, password: hashedPassword});
-        await em.persistAndFlush(user);
+        /*const user = em.create(User, {username: options.username, password: hashedPassword});
+        await em.persistAndFlush(user);*/
+
+
+        let user;
+        const result = await (em as EntityManager).createQueryBuilder(User).getKnexQuery().insert(
+            {
+                username: options.username,
+                password: hashedPassword,
+                created_at: new Date(),
+                updated_at: new Date()
+            }
+        ).returning("*");
+        user = result[0];
 
         req.session.userId = user.id;
 
