@@ -3,6 +3,7 @@ import {MyContext} from "../types";
 import {User} from "../entities/User";
 import argon2 from "argon2";
 import {EntityManager} from "@mikro-orm/postgresql"
+import {COOKIE_NAME} from "../config";
 
 @InputType()
 class RegistrationInput {
@@ -40,8 +41,8 @@ class UserResponse {
 
 @Resolver()
 export class UserResolver {
-    @Query(() => User, { nullable: true })
-    me(@Ctx() {em, req }: MyContext) {
+    @Query(() => User, {nullable: true})
+    me(@Ctx() {em, req}: MyContext) {
         // you are not logged in
         if (!req.session.userId) {
             return null;
@@ -139,4 +140,19 @@ export class UserResolver {
         return {user};
     }
 
+    @Mutation(() => Boolean)
+    logout(
+        @Ctx() {req, res}: MyContext
+    ) {
+
+       return new Promise(_res => req.session.destroy(err => {
+            if (err) {
+                console.log(err);
+                _res(false);
+                return;
+            }
+           res.clearCookie(COOKIE_NAME);
+            _res(true);
+        }));
+    }
 }
