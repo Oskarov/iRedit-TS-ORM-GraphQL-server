@@ -1,25 +1,12 @@
-import {Resolver, Ctx, Mutation, Arg, InputType, Field, ObjectType, Query} from "type-graphql";
+import {Arg, Ctx, Field, Mutation, ObjectType, Query, Resolver} from "type-graphql";
 import {MyContext} from "../types";
 import {User} from "../entities/User";
 import argon2 from "argon2";
 import {EntityManager} from "@mikro-orm/postgresql"
 import {COOKIE_NAME} from "../config";
-
-@InputType()
-class RegistrationInput {
-    @Field()
-    username: string
-    @Field()
-    password: string
-}
-
-@InputType()
-class LoginInput {
-    @Field()
-    username: string
-    @Field()
-    password: string
-}
+import {RegistrationInput} from "./registrationInput";
+import {validateRegister} from "../utils/dataValidators/validateRegister";
+import {LoginInput} from "./loginInput";
 
 @ObjectType()
 class FieldError {
@@ -41,6 +28,17 @@ class UserResponse {
 
 @Resolver()
 export class UserResolver {
+    @Mutation(() => Boolean)
+    async forgotPassword(
+        @Arg('email') email: string,
+        @Ctx() {em}: MyContext
+    ) {
+        const user = await em.findOne(User, {email});
+        console.log(user)
+        return true;
+    }
+
+
     @Query(() => User, {nullable: true})
     me(@Ctx() {em, req}: MyContext) {
         // you are not logged in
@@ -51,61 +49,32 @@ export class UserResolver {
         return em.findOne(User, {id: req.session.userId});
     }
 
+
     @Mutation(() => UserResponse)
     async register(
         @Arg('options') options: RegistrationInput,
-        @Ctx() {em, req}: MyContext
+        @Ctx() mCon: MyContext
     ): Promise<UserResponse> {
-        if (options.username.trim().length <= 2) {
-            return {
-                errors: [
-                    {
-                        field: 'username',
-                        message: 'length must be greater then 2 symbols'
-                    }
-                ]
-            }
-        }
 
-        if (options.password.trim().length <= 5) {
-            return {
-                errors: [
-                    {
-                        field: 'password',
-                        message: 'length must be greater then 5 symbols'
-                    }
-                ]
-            }
-        }
-        const existUser = await em.findOne(User, {username: options.username});
-        if (existUser) {
-            return {
-                errors: [
-                    {
-                        field: 'username',
-                        message: 'username already tekken'
-                    }
-                ]
-            }
-        }
+        await validateRegister(options, mCon);
 
         const hashedPassword = await argon2.hash(options.password);
         /*const user = em.create(User, {username: options.username, password: hashedPassword});
         await em.persistAndFlush(user);*/
 
-
         let user;
-        const result = await (em as EntityManager).createQueryBuilder(User).getKnexQuery().insert(
+        const result = await (mCon.em as EntityManager).createQueryBuilder(User).getKnexQuery().insert(
             {
                 username: options.username,
                 password: hashedPassword,
+                email: options.email,
                 created_at: new Date(),
                 updated_at: new Date()
             }
         ).returning("*");
         user = result[0];
 
-        req.session.userId = user.id;
+        mCon.req.session.userId = user.id;
 
         return {user};
     }
@@ -115,7 +84,9 @@ export class UserResolver {
         @Arg('options') options: LoginInput,
         @Ctx() {em, req}: MyContext
     ): Promise<UserResponse> {
-        const user = await em.findOne(User, {username: options.username});
+        const user = await em.findOne(User, options.usernameOrEmail.includes('@')
+            ? {email: options.usernameOrEmail}
+            : {username: options.usernameOrEmail});
         if (!user) {
             return {
                 errors: [{
@@ -145,13 +116,13 @@ export class UserResolver {
         @Ctx() {req, res}: MyContext
     ) {
 
-       return new Promise(_res => req.session.destroy(err => {
+        return new Promise(_res => req.session.destroy(err => {
             if (err) {
                 console.log(err);
                 _res(false);
                 return;
             }
-           res.clearCookie(COOKIE_NAME);
+            res.clearCookie(COOKIE_NAME);
             _res(true);
         }));
     }
