@@ -3,18 +3,14 @@ import {MyContext} from "../types";
 import {User} from "../entities/User";
 import argon2 from "argon2";
 import {EntityManager} from "@mikro-orm/postgresql"
-import {COOKIE_NAME} from "../config";
+import {COOKIE_NAME, FORGET_PASSWORD_PREFIX} from "../config";
 import {RegistrationInput} from "./registrationInput";
 import {validateRegister} from "../utils/dataValidators/validateRegister";
 import {LoginInput} from "./loginInput";
-
-@ObjectType()
-class FieldError {
-    @Field()
-    field: string;
-    @Field()
-    message: string;
-}
+import {FieldError} from "./fieldError";
+import {validateLogin} from "../utils/dataValidators/validateLogin";
+import {sendEmail} from "../utils/sendEmail";
+import {v4} from "uuid";
 
 
 @ObjectType()
@@ -31,13 +27,18 @@ export class UserResolver {
     @Mutation(() => Boolean)
     async forgotPassword(
         @Arg('email') email: string,
-        @Ctx() {em}: MyContext
+        @Ctx() {em, redis}: MyContext
     ) {
         const user = await em.findOne(User, {email});
-        console.log(user)
+        if (!user) {
+            return true;
+        }
+        const token = v4();
+        await redis.set(FORGET_PASSWORD_PREFIX+token, user.id, 'ex', 1000 * 60 * 60 * 24 * 3); //3 days
+        const emailTemplate = `<a href="http://localhost:3000/change-password/${token}">Change password</a>`;
+        await sendEmail(user.email, emailTemplate, 'forgotPassword');
         return true;
     }
-
 
     @Query(() => User, {nullable: true})
     me(@Ctx() {em, req}: MyContext) {
@@ -56,7 +57,12 @@ export class UserResolver {
         @Ctx() mCon: MyContext
     ): Promise<UserResponse> {
 
-        await validateRegister(options, mCon);
+
+
+        const errors = await validateRegister(options, mCon);
+        if (errors) {
+            return errors;
+        }
 
         const hashedPassword = await argon2.hash(options.password);
         /*const user = em.create(User, {username: options.username, password: hashedPassword});
@@ -87,28 +93,26 @@ export class UserResolver {
         const user = await em.findOne(User, options.usernameOrEmail.includes('@')
             ? {email: options.usernameOrEmail}
             : {username: options.usernameOrEmail});
-        if (!user) {
-            return {
-                errors: [{
-                    field: 'username',
-                    message: 'could not find this user'
-                }]
-            }
+
+
+
+        const errors = await validateLogin(user, options);
+
+        if (errors) {
+            return errors;
         }
 
-        const valid = await argon2.verify(user.password, options.password);
-        if (!valid) {
-            return {
-                errors: [{
-                    field: 'password',
-                    message: 'Username or password incorrect'
-                }]
-            }
+        if (user){
+            req.session.userId = user?.id;
+            return {user};
         }
 
-        req.session.userId = user.id;
-
-        return {user};
+        return {
+            errors: [{
+                field: 'usernameOrEmail',
+                message: 'undefined error',
+            }]
+        }
     }
 
     @Mutation(() => Boolean)
