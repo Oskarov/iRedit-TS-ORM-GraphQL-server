@@ -11,6 +11,7 @@ import {FieldError} from "./fieldError";
 import {validateLogin} from "../utils/dataValidators/validateLogin";
 import {sendEmail} from "../utils/sendEmail";
 import {v4} from "uuid";
+import {validateNewPassword} from "../utils/dataValidators/validateNewPassword";
 
 
 @ObjectType()
@@ -24,6 +25,31 @@ class UserResponse {
 
 @Resolver()
 export class UserResolver {
+
+    @Mutation(() => UserResponse)
+    async changePassword(
+        @Arg('newPassword') newPassword: string,
+        @Arg('password') newPasswordConfirmed: string,
+        @Arg('token') token: string,
+        @Ctx() {req, redis, em}: MyContext
+    ) {
+        await validateNewPassword(newPassword, newPasswordConfirmed, token, em, redis);
+
+        const userId = await redis.get(FORGET_PASSWORD_PREFIX + token);
+        if (userId) {
+            const user = await em.findOne(User, {id: parseInt(userId)});
+            if (user) {
+                const hashedPassword = await argon2.hash(newPassword);
+                user.password = hashedPassword;
+                await em.persistAndFlush;
+                req.session.userId = user.id;
+                return user;
+            }
+        }
+
+        return false;
+    }
+
     @Mutation(() => Boolean)
     async forgotPassword(
         @Arg('email') email: string,
@@ -34,7 +60,7 @@ export class UserResolver {
             return true;
         }
         const token = v4();
-        await redis.set(FORGET_PASSWORD_PREFIX+token, user.id, 'ex', 1000 * 60 * 60 * 24 * 3); //3 days
+        await redis.set(FORGET_PASSWORD_PREFIX + token, user.id, 'ex', 1000 * 60 * 60 * 24 * 3); //3 days
         const emailTemplate = `<a href="http://localhost:3000/change-password/${token}">Change password</a>`;
         await sendEmail(user.email, emailTemplate, 'forgotPassword');
         return true;
@@ -56,7 +82,6 @@ export class UserResolver {
         @Arg('options') options: RegistrationInput,
         @Ctx() mCon: MyContext
     ): Promise<UserResponse> {
-
 
 
         const errors = await validateRegister(options, mCon);
@@ -95,14 +120,13 @@ export class UserResolver {
             : {username: options.usernameOrEmail});
 
 
-
         const errors = await validateLogin(user, options);
 
         if (errors) {
             return errors;
         }
 
-        if (user){
+        if (user) {
             req.session.userId = user?.id;
             return {user};
         }
