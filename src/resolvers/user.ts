@@ -29,12 +29,11 @@ export class UserResolver {
     @Mutation(() => UserResponse)
     async changePassword(
         @Arg('newPassword') newPassword: string,
-        @Arg('password') newPasswordConfirmed: string,
+        @Arg('newPasswordConfirmed') newPasswordConfirmed: string,
         @Arg('token') token: string,
         @Ctx() {req, redis, em}: MyContext
     ) {
         await validateNewPassword(newPassword, newPasswordConfirmed, token, em, redis);
-
         const userId = await redis.get(FORGET_PASSWORD_PREFIX + token);
         if (userId) {
             const user = await em.findOne(User, {id: parseInt(userId)});
@@ -43,7 +42,7 @@ export class UserResolver {
                 user.password = hashedPassword;
                 await em.persistAndFlush;
                 req.session.userId = user.id;
-                return user;
+                return {user};
             }
         }
 
