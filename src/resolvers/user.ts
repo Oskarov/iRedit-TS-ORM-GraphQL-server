@@ -34,7 +34,8 @@ export class UserResolver {
         @Ctx() {req, redis, em}: MyContext
     ) {
         await validateNewPassword(newPassword, newPasswordConfirmed, token, em, redis);
-        const userId = await redis.get(FORGET_PASSWORD_PREFIX + token);
+        const key = FORGET_PASSWORD_PREFIX + token;
+        const userId = await redis.get(key);
         if (userId) {
             const user = await em.findOne(User, {id: parseInt(userId)});
             if (user) {
@@ -42,6 +43,7 @@ export class UserResolver {
                 user.password = hashedPassword;
                 await em.persistAndFlush;
                 req.session.userId = user.id;
+                await redis.del(key);
                 return {user};
             }
         }
