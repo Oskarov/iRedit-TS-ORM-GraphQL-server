@@ -54,5 +54,5 @@ export const validateNewPassword = async (newPassword: string, newPasswordConfir
     }
 
 
-    return user as User;
+    return null;
 }

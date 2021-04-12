@@ -33,14 +33,13 @@ export class UserResolver {
         @Arg('token') token: string,
         @Ctx() {req, redis, em}: MyContext
     ) {
-        await validateNewPassword(newPassword, newPasswordConfirmed, token, em, redis);
+        const error = await validateNewPassword(newPassword, newPasswordConfirmed, token, em, redis);
         const key = FORGET_PASSWORD_PREFIX + token;
         const userId = await redis.get(key);
         if (userId) {
             const user = await em.findOne(User, {id: parseInt(userId)});
             if (user) {
-                const hashedPassword = await argon2.hash(newPassword);
-                user.password = hashedPassword;
+                user.password = await argon2.hash(newPassword);
                 await em.persistAndFlush;
                 req.session.userId = user.id;
                 await redis.del(key);
@@ -48,7 +47,7 @@ export class UserResolver {
             }
         }
 
-        return false;
+        return error;
     }
 
     @Mutation(() => Boolean)
