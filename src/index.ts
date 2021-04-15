@@ -13,8 +13,17 @@ import connectRedis from "connect-redis";
 import {MyContext} from "./types";
 import cors from "cors"
 import {__prod__, COOKIE_NAME} from  "./config";
+import {createConnection} from "typeorm"
 
 const main = async () => {
+    const connection = await createConnection({
+        type: 'postgres',
+        database: 'lireddit2',
+        username: 'postgres',
+        password: 'root',
+        logging: true,
+        synchronize: true,
+    });
     const orm = await MikroORM.init(microConfig);
     const app = express();
     const RedisStore = connectRedis(session);
