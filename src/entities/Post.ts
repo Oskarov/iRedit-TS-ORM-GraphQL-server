@@ -1,12 +1,23 @@
-import {Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn} from "typeorm";
-import {Field, Int, ObjectType} from "type-graphql";
+import { ObjectType, Field } from "type-graphql";
+import {
+    Entity,
+    Column,
+    PrimaryGeneratedColumn,
+    CreateDateColumn,
+    UpdateDateColumn,
+    BaseEntity,
+} from "typeorm";
 
 @ObjectType()
 @Entity()
-export class Post {
-    @Field(() => Int)
+export class Post extends BaseEntity {
+    @Field()
     @PrimaryGeneratedColumn()
     id!: number;
+
+    @Field()
+    @Column()
+    title!: string;
 
     @Field(() => String)
     @CreateDateColumn()
@@ -15,10 +26,4 @@ export class Post {
     @Field(() => String)
     @UpdateDateColumn()
     updatedAt: Date;
-
-    @Field()
-    @Column()
-    title!: string
-
-
 }

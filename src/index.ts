@@ -1,7 +1,5 @@
-import {MikroORM} from "@mikro-orm/core";
 /*import {Post} from "./entities/Post";*/
 import "reflect-metadata";
-import microConfig from "./orm.config";
 import express from 'express';
 import {ApolloServer} from 'apollo-server-express';
 import {buildSchema} from 'type-graphql';
@@ -10,21 +8,23 @@ import {UserResolver} from "./resolvers/user";
 import Redis from "ioredis";
 import session from "express-session";
 import connectRedis from "connect-redis";
-import {MyContext} from "./types";
 import cors from "cors"
 import {__prod__, COOKIE_NAME} from  "./config";
 import {createConnection} from "typeorm"
+import {Post} from "./entities/Post";
+import {User} from "./entities/User";
 
 const main = async () => {
-    const connection = await createConnection({
+    await createConnection({
         type: 'postgres',
         database: 'lireddit2',
         username: 'postgres',
         password: 'root',
         logging: true,
         synchronize: true,
+        entities: [Post, User]
     });
-    const orm = await MikroORM.init(microConfig);
+
     const app = express();
     const RedisStore = connectRedis(session);
     const redis = new Redis();
@@ -51,14 +51,14 @@ const main = async () => {
         })
     )
 
-    await orm.getMigrator().up();
+
     const apolloServer = new ApolloServer({
         schema: await buildSchema({
             resolvers: [PostResolver, UserResolver],
             validate: false
         }),
-        context: ({req, res}): MyContext => ({
-            em: orm.em, req, res, redis
+        context: ({req, res}) => ({
+            req, res, redis
         })
     });
     apolloServer.applyMiddleware({app, cors: {origin: false}})

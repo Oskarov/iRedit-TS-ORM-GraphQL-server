@@ -2,7 +2,7 @@ import {User} from "../../entities/User";
 import {LoginInput} from "../../resolvers/loginInput";
 import argon2 from "argon2";
 
-export const validateLogin = async (user: User | null, options: LoginInput) => {
+export const validateLogin = async (user: User | undefined, options: LoginInput) => {
     if (!user) {
         return {
             errors: [{

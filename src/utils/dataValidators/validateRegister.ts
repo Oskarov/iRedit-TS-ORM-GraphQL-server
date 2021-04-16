@@ -1,9 +1,8 @@
 import {emailIsValid} from "../emailIsValid";
 import {User} from "../../entities/User";
-import {MyContext} from "../../types";
 import {RegistrationInput} from "../../resolvers/registrationInput";
 
-export const validateRegister = async (options: RegistrationInput, mContext: MyContext) => {
+export const validateRegister = async (options: RegistrationInput) => {
     if (!emailIsValid(options.email)) {
         return {
             errors: [
@@ -47,7 +46,7 @@ export const validateRegister = async (options: RegistrationInput, mContext: MyC
             ]
         }
     }
-    const existUser = await mContext.em.findOne(User, {username: options.username});
+    const existUser = await User.findOne({username: options.username});
     if (existUser) {
         return {
             errors: [

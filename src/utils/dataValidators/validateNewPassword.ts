@@ -1,11 +1,9 @@
 import {Redis} from "ioredis";
 import {FORGET_PASSWORD_PREFIX} from "../../config";
 import {User} from "../../entities/User";
-import {Connection, EntityManager, IDatabaseDriver} from "@mikro-orm/core";
 
 
-
-export const validateNewPassword = async (newPassword: string, newPasswordConfirmed: string, token: string, em: EntityManager<any> & EntityManager<IDatabaseDriver<Connection>>, redis: Redis) => {
+export const validateNewPassword = async (newPassword: string, newPasswordConfirmed: string, token: string, redis: Redis) => {
 
     if (newPassword.trim().length <= 5) {
         return {
@@ -41,7 +39,7 @@ export const validateNewPassword = async (newPassword: string, newPasswordConfir
         }
     }
 
-    const user = await em.findOne(User, {id: parseInt(userId)});
+    const user = await User.findOne({id: parseInt(userId)});
     if (!user) {
         return {
             errors: [
