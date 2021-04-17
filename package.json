@@ -8,8 +8,7 @@
     "dev": "nodemon dist/index.js",
     "devTs": "nodemon --exec ts-node src/index.ts",
     "start": "node dist/index.js",
-    "startDev": "ts-node src/index.ts",
-    "migration": "mikro-orm migration:create"
+    "startDev": "ts-node src/index.ts"
   },
   "repository": {
     "type": "git",
@@ -22,10 +21,6 @@
   },
   "homepage": "https://github.com/Oskarov/iRedit-TS-ORM-GraphQL-server#readme",
   "dependencies": {
-    "@mikro-orm/cli": "^4.4.4",
-    "@mikro-orm/core": "^4.4.4",
-    "@mikro-orm/migrations": "^4.4.4",
-    "@mikro-orm/postgresql": "^4.4.4",
     "@types/cors": "^2.8.10",
     "@types/ioredis": "^4.22.2",
     "@types/node": "^14.14.35",
