@@ -2,6 +2,7 @@ import {Arg, Ctx, Field, InputType, Int, Mutation, Query, Resolver, UseMiddlewar
 import {Post} from "../entities/Post";
 import {MyContext} from "../types";
 import {isAuth} from "../middleware/isAuth";
+import {getConnection} from "typeorm";
 
 @InputType()
 class PostInput {
@@ -14,7 +15,16 @@ class PostInput {
 @Resolver()
 export class PostResolver {
     @Query(() => [Post])
-    async posts(): Promise<Post[]> {
+    async posts(
+        @Arg('limit') limit: number,
+        @Arg('cursor', () => String, {nullable: true}) cursor: string | null
+    ): Promise<Post[]> {
+        return getConnection()
+            .getRepository(Post)
+            .createQueryBuilder("p")
+            /*.where("user.id = :id", {id: 1})*/
+            .orderBy('"createdAt"')
+            .getMany();
         return Post.find();
     }
 
@@ -28,7 +38,7 @@ export class PostResolver {
     @UseMiddleware(isAuth)
     async createPost(
         @Arg('input') input: PostInput,
-        @Ctx() {req}:MyContext
+        @Ctx() {req}: MyContext
     ): Promise<Post> {
         return Post.create({...input, creatorId: req.session.userId}).save();
     }
