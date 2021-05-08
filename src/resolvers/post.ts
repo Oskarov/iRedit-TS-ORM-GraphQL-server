@@ -136,4 +136,13 @@ export class PostResolver {
         return true;
     }
 
+    @Mutation(() => Boolean)
+    @UseMiddleware(isAuth)
+    async vote(
+        @Arg('postId', () => Int) postId: number,
+        @Ctx() {req}: MyContext
+    ){
+        const {userId} = req.session;
+        
+    }
 }

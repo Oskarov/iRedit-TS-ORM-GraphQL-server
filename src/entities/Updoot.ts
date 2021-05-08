@@ -2,10 +2,7 @@ import {ObjectType, Field} from "type-graphql";
 import {
     Entity,
     Column,
-    PrimaryGeneratedColumn,
-    CreateDateColumn,
-    UpdateDateColumn,
-    BaseEntity, ManyToOne, ManyToMany, PrimaryColumn,
+    BaseEntity,  ManyToMany, PrimaryColumn,
 } from "typeorm";
 import {User} from "./User";
 import {Post} from "./Post";
